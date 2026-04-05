@@ -6,6 +6,7 @@ export interface Product {
   images: string[];
   category: string;
   isBestSeller?: boolean;
+  inStock?: boolean;
 }
 
 export interface CartItem extends Product {

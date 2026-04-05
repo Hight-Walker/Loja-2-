@@ -42,6 +42,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     images: ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=800"],
     category: "Luxo",
     isBestSeller: true,
+    inStock: true,
   },
   {
     id: "2",
@@ -50,6 +51,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     description: "Design minimalista em preto fosco, perfeito para ocasiões formais e uso diário sofisticado.",
     images: ["https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&q=80&w=800"],
     category: "Minimalista",
+    inStock: true,
   },
   {
     id: "3",
@@ -59,6 +61,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     images: ["https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?auto=format&fit=crop&q=80&w=800"],
     category: "Clássico",
     isBestSeller: true,
+    inStock: true,
   },
   {
     id: "4",
@@ -67,6 +70,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     description: "Resistente a 300m, ideal para mergulho profissional sem perder a elegância.",
     images: ["https://images.unsplash.com/photo-1614164185128-e4ec99c436d7?auto=format&fit=crop&q=80&w=800"],
     category: "Esportivo",
+    inStock: true,
   },
 ];
 
@@ -84,6 +88,7 @@ export const getProducts = (): Product[] => {
       return { ...rest, images: [image] };
     }
     if (!p.images) return { ...p, images: [] };
+    if (p.inStock === undefined) return { ...p, inStock: true };
     return p;
   });
 };

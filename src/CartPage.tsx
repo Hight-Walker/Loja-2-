@@ -8,9 +8,10 @@ import {
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { CartItem, StoreConfig, User } from './types';
-import { getStoreConfig, getCurrentUser } from './lib/storage';
+import { getStoreConfig, getCurrentUser, updateUser, setCurrentUser } from './lib/storage';
 import { cn, formatPrice } from './lib/utils';
 import { Toast, ToastType, Button, Badge } from './components/UI';
+import { Footer } from './components/Footer';
 
 export const CartPage = () => {
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -18,7 +19,7 @@ export const CartPage = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [storeConfig] = useState<StoreConfig>(getStoreConfig());
-  const [user] = useState<User | null>(getCurrentUser());
+  const [user, setUser] = useState<User | null>(getCurrentUser());
   const [toast, setToast] = useState<{ message: string, type: ToastType, isVisible: boolean }>({ message: '', type: 'success', isVisible: false });
   
   // Shipping & Address State
@@ -89,9 +90,9 @@ export const CartPage = () => {
     setToast({ message: 'Item removido do carrinho', type: 'info', isVisible: true });
   };
 
-  const calculateShipping = async (targetCep: string = cep) => {
+  const calculateShipping = async (targetCep: string = cep, silent: boolean = false) => {
     if (targetCep.length < 8) {
-      setToast({ message: 'Por favor, insira um CEP válido', type: 'error', isVisible: true });
+      if (!silent) setToast({ message: 'Por favor, insira um CEP válido', type: 'error', isVisible: true });
       return;
     }
 
@@ -108,9 +109,9 @@ export const CartPage = () => {
       else cost = 85; // R$ 85,00
 
       setShippingCost(cost);
-      setToast({ message: 'Frete calculado com sucesso!', type: 'success', isVisible: true });
+      if (!silent) setToast({ message: 'Frete calculado com sucesso!', type: 'success', isVisible: true });
     } catch (error) {
-      setToast({ message: 'Erro ao calcular frete', type: 'error', isVisible: true });
+      if (!silent) setToast({ message: 'Erro ao calcular frete', type: 'error', isVisible: true });
     } finally {
       setIsCalculating(false);
     }
@@ -135,19 +136,36 @@ export const CartPage = () => {
             state: data.uf
           }));
           setShowAddressFields(true);
-          calculateShipping(cleanValue);
+          calculateShipping(cleanValue, true);
         } else {
-          setToast({ message: 'CEP não encontrado', type: 'error', isVisible: true });
           setShowAddressFields(false);
         }
       } catch (err) {
-        setToast({ message: 'Erro ao buscar CEP', type: 'error', isVisible: true });
         setShowAddressFields(false);
       } finally {
         setLoadingCep(false);
       }
     } else {
       setShowAddressFields(false);
+    }
+  };
+
+  const handleSaveAddress = () => {
+    if (!addressData.cep || !addressData.street || !addressData.number || !addressData.neighborhood || !addressData.city || !addressData.state) {
+      setToast({ message: 'Por favor, preencha todos os campos obrigatórios.', type: 'error', isVisible: true });
+      return;
+    }
+
+    const finalAddress = `${addressData.street}, ${addressData.number}${addressData.complement ? ` (${addressData.complement})` : ''} - ${addressData.neighborhood}, ${addressData.city}/${addressData.state} (CEP: ${addressData.cep})`;
+    
+    if (user) {
+      const updatedUser = { ...user, address: finalAddress };
+      updateUser(updatedUser);
+      setCurrentUser(updatedUser, true);
+      setUser(updatedUser);
+      setUseCustomAddress(false);
+      setToast({ message: 'Endereço salvo e frete atualizado!', type: 'success', isVisible: true });
+      calculateShipping(addressData.cep, true);
     }
   };
 
@@ -206,11 +224,11 @@ export const CartPage = () => {
 
       <main className="pt-32 pb-32">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-12 gap-24 items-start">
-            {/* Left: Cart Items */}
-            <div className="lg:col-span-8">
+          <div className="space-y-16">
+            {/* Cart Items */}
+            <div className="max-w-4xl mx-auto w-full">
               <div className="flex flex-col sm:flex-row items-baseline sm:items-end justify-between mb-12 gap-4">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Sua Sacola</h1>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">Sua Sacola</h1>
                 <Badge variant="gray">
                   {cart.length} {cart.length === 1 ? 'item' : 'itens'}
                 </Badge>
@@ -234,7 +252,7 @@ export const CartPage = () => {
                     <Button onClick={() => navigate('/')} variant="gold" size="lg">Ver Coleções</Button>
                   </motion.div>
                 ) : (
-                  <div className="space-y-8">
+                  <div className="space-y-6">
                     {cart.map((item) => (
                       <motion.div 
                         key={item.id}
@@ -242,62 +260,78 @@ export const CartPage = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.3 } }}
-                        className="flex flex-col sm:flex-row gap-8 group bg-white hover:bg-gray-50 p-6 rounded-[2rem] transition-all duration-300 border border-transparent hover:border-gray-100 hover:shadow-xl"
+                        className="group bg-white hover:bg-gray-50 p-4 sm:p-6 rounded-[2.5rem] transition-all duration-500 border border-gray-100 hover:border-gold/20 hover:shadow-2xl hover:shadow-gold/5"
                       >
-                        <div className="w-full sm:w-48 aspect-[3/4] bg-gray-50 rounded-[2rem] overflow-hidden relative shadow-sm">
-                          <img 
-                            src={item.image} 
-                            alt={item.name} 
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                            referrerPolicy="no-referrer" 
-                          />
-                          {item.isBestSeller && (
-                            <div className="absolute top-4 left-4">
-                              <Badge variant="gold">
-                                <Star size={10} fill="currentColor" /> Best Seller
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex-1 flex flex-col justify-between py-1">
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-start gap-4">
-                              <div>
-                                <span className="text-gold text-[10px] font-bold uppercase tracking-wider mb-1 block">{item.category}</span>
-                                <h3 className="text-2xl md:text-3xl font-bold group-hover:text-gold transition-colors duration-300 tracking-tight">{item.name}</h3>
+                        <div className="flex flex-col sm:flex-row gap-6 sm:gap-10">
+                          {/* Image Container */}
+                          <div className="w-full sm:w-40 md:w-48 aspect-[4/5] bg-gray-50 rounded-[2rem] overflow-hidden relative shadow-inner shrink-0">
+                            <img 
+                              src={item.image} 
+                              alt={item.name} 
+                              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                              referrerPolicy="no-referrer" 
+                            />
+                            {item.isBestSeller && (
+                              <div className="absolute top-4 left-4">
+                                <Badge variant="gold" className="backdrop-blur-md bg-gold/80">
+                                  <Star size={10} fill="currentColor" /> Best Seller
+                                </Badge>
                               </div>
-                              <button 
-                                onClick={() => removeFromCart(item.id)}
-                                className="w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white hover:bg-red-500 rounded-[2rem] transition-all duration-300 shadow-sm shrink-0"
-                              >
-                                <Trash2 size={20} />
-                              </button>
-                            </div>
-                            <p className="text-gray-500 text-sm line-clamp-2 border-l-4 border-gold/10 pl-4 py-1">
-                              {item.description}
-                            </p>
+                            )}
                           </div>
 
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
-                            <div className="flex items-center bg-white border border-gray-100 rounded-[2rem] p-1.5 w-fit shadow-sm">
-                              <button 
-                                onClick={() => updateQty(item.id, -1)}
-                                className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 hover:text-gold rounded-lg transition-all active:scale-95"
-                              >
-                                <Minus size={16} />
-                              </button>
-                              <span className="w-12 text-center font-bold text-lg">{item.quantity}</span>
-                              <button 
-                                onClick={() => updateQty(item.id, 1)}
-                                className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 hover:text-gold rounded-lg transition-all active:scale-95"
-                              >
-                                <Plus size={16} />
-                              </button>
+                          {/* Details Container */}
+                          <div className="flex-1 flex flex-col justify-between py-2">
+                            <div className="space-y-4">
+                              <div className="flex justify-between items-start gap-4">
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-gold text-[10px] font-bold uppercase tracking-widest">{item.category}</span>
+                                    <div className="w-1 h-1 rounded-full bg-gray-200" />
+                                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Ref: {item.id.slice(0, 8)}</span>
+                                  </div>
+                                  <h3 className="text-2xl md:text-3xl font-bold group-hover:text-gold transition-colors duration-300 tracking-tight leading-tight">{item.name}</h3>
+                                </div>
+                                <button 
+                                  onClick={() => removeFromCart(item.id)}
+                                  className="w-12 h-12 flex items-center justify-center text-gray-300 hover:text-white hover:bg-red-500 rounded-full transition-all duration-300 shadow-sm shrink-0 group/delete"
+                                >
+                                  <Trash2 size={20} className="group-hover/delete:scale-110 transition-transform" />
+                                </button>
+                              </div>
+                              <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 max-w-xl">
+                                {item.description}
+                              </p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-1">Valor Total</p>
-                              <p className="text-3xl font-bold tracking-tight text-gray-900">{formatPrice(item.price * item.quantity)}</p>
+
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mt-8">
+                              <div className="space-y-3">
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Quantidade</p>
+                                <div className="flex items-center bg-gray-50 border border-gray-100 rounded-full p-1 w-fit shadow-inner">
+                                  <button 
+                                    onClick={() => updateQty(item.id, -1)}
+                                    className="w-10 h-10 flex items-center justify-center hover:bg-white hover:text-gold rounded-full transition-all active:scale-90 disabled:opacity-30"
+                                    disabled={item.quantity <= 1}
+                                  >
+                                    <Minus size={16} />
+                                  </button>
+                                  <span className="w-12 text-center font-bold text-lg tabular-nums">{item.quantity}</span>
+                                  <button 
+                                    onClick={() => updateQty(item.id, 1)}
+                                    className="w-10 h-10 flex items-center justify-center hover:bg-white hover:text-gold rounded-full transition-all active:scale-90"
+                                  >
+                                    <Plus size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              <div className="text-left md:text-right">
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Subtotal do Item</p>
+                                <div className="flex items-baseline gap-2 md:justify-end">
+                                  <span className="text-sm text-gray-400 font-medium">{item.quantity}x</span>
+                                  <p className="text-3xl md:text-4xl font-bold tracking-tighter text-gray-900">{formatPrice(item.price * item.quantity)}</p>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -308,245 +342,324 @@ export const CartPage = () => {
               </AnimatePresence>
             </div>
 
-            {/* Right: Summary */}
-            <div className="lg:col-span-4">
-              <div className="sticky top-32 space-y-6">
-                <div className="bg-gray-50 rounded-[2rem] p-8 sm:p-10 space-y-8 border border-gray-100 shadow-sm">
-                  <h2 className="text-3xl font-bold tracking-tight">Resumo do Pedido</h2>
-                  
-                  <div className="space-y-6">
-                    {/* Address & Shipping Section */}
-                    <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-lg space-y-6 relative overflow-hidden group">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-gold/20 group-hover:bg-gold transition-colors" />
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-gray-900">
-                          <div className="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center text-gold">
-                            <MapPin size={20} />
-                          </div>
-                          <span>Endereço de Entrega</span>
+            {/* Horizontal Summary Section */}
+            {cart.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-6xl mx-auto w-full"
+              >
+                <div className="bg-gray-50 rounded-[3rem] p-8 sm:p-12 border border-gray-100 shadow-sm relative overflow-hidden">
+                  <div className="grid lg:grid-cols-2 gap-12 items-start">
+                    {/* Left: Address & Shipping */}
+                    <div className="space-y-8">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gold/10 rounded-2xl flex items-center justify-center text-gold">
+                          <MapPin size={24} />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Endereço de Entrega</h2>
+                          <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">Onde seu Chronos será entregue</p>
                         </div>
                       </div>
 
-                      {user ? (
-                        <div className="space-y-4">
-                          {!useCustomAddress ? (
-                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
-                              <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Endereço Cadastrado</p>
-                              <p className="text-sm text-gray-500 leading-relaxed">{user.address}</p>
-                              <button 
-                                onClick={() => setUseCustomAddress(true)}
-                                className="text-[10px] font-bold text-gold uppercase tracking-widest hover:underline flex items-center gap-1 mt-2"
-                              >
-                                <Edit3 size={12} /> Usar outro endereço
-                              </button>
-                              
-                              {shippingCost === null && !isFreeShipping && (
-                                <Button 
-                                  onClick={() => calculateShipping()} 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="w-full mt-4"
-                                  disabled={isCalculating}
+                      <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-lg shadow-gray-200/50 space-y-6">
+                        {user ? (
+                          <div className="space-y-4">
+                            <AnimatePresence mode="wait">
+                              {!useCustomAddress ? (
+                                <motion.div 
+                                  key="saved-address"
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: 10 }}
+                                  className="space-y-4"
                                 >
-                                  {isCalculating ? "Calculando..." : "Calcular Frete para este endereço"}
-                                </Button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                              <div className="flex items-center justify-between">
-                                <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Novo Endereço</p>
-                                <button 
-                                  onClick={() => setUseCustomAddress(false)}
-                                  className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600"
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                              
-                              <div className="space-y-3">
-                                <div className="relative group/input">
-                                  <Search size={16} className={cn("absolute left-4 top-1/2 -translate-y-1/2 text-gray-400", loadingCep && "animate-spin")} />
-                                  <input 
-                                    type="text" 
-                                    placeholder="CEP (00000-000)"
-                                    value={addressData.cep}
-                                    onChange={(e) => handleCepLookup(e.target.value)}
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-[2rem] pl-12 pr-4 py-4 text-sm focus:bg-white focus:ring-2 focus:ring-gold/10 focus:border-gold/20 transition-all font-mono"
-                                  />
-                                </div>
-
-                                <AnimatePresence>
-                                  {showAddressFields && (
-                                    <motion.div 
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: 'auto' }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      className="space-y-3 overflow-hidden pt-2"
+                                  <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Endereço Salvo</p>
+                                    <p className="text-base text-gray-900 font-medium leading-relaxed">{user.address || 'Nenhum endereço cadastrado'}</p>
+                                  </div>
+                                  <button 
+                                    onClick={() => setUseCustomAddress(true)}
+                                    className="text-[10px] font-bold text-gold uppercase tracking-widest hover:underline flex items-center gap-2"
+                                  >
+                                    <Edit3 size={14} /> Usar outro endereço
+                                  </button>
+                                  
+                                  {shippingCost === null && !isFreeShipping && (
+                                    <Button 
+                                      onClick={() => calculateShipping()} 
+                                      variant="outline" 
+                                      size="lg" 
+                                      className="w-full mt-4"
+                                      disabled={isCalculating}
                                     >
-                                      <div className="grid grid-cols-3 gap-2">
-                                        <input 
-                                          type="text" 
-                                          placeholder="Rua" 
-                                          value={addressData.street} 
-                                          onChange={e => setAddressData({...addressData, street: e.target.value})}
-                                          className="col-span-2 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-gold/30"
-                                        />
-                                        <input 
-                                          type="text" 
-                                          placeholder="Nº" 
-                                          value={addressData.number} 
-                                          onChange={e => setAddressData({...addressData, number: e.target.value})}
-                                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-gold/30"
-                                        />
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-2">
-                                        <input 
-                                          type="text" 
-                                          placeholder="Bairro" 
-                                          value={addressData.neighborhood} 
-                                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none"
-                                          readOnly
-                                        />
-                                        <input 
-                                          type="text" 
-                                          placeholder="Cidade/UF" 
-                                          value={`${addressData.city}/${addressData.state}`} 
-                                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none"
-                                          readOnly
-                                        />
-                                      </div>
-                                    </motion.div>
+                                      {isCalculating ? <Loader2 className="animate-spin mr-2" size={20} /> : null}
+                                      {isCalculating ? "Calculando..." : "Calcular Frete"}
+                                    </Button>
                                   )}
-                                </AnimatePresence>
+                                </motion.div>
+                              ) : (
+                                <motion.div 
+                                  key="new-address"
+                                  initial={{ opacity: 0, x: 10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: -10 }}
+                                  className="space-y-6"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-bold text-gold uppercase tracking-[0.2em]">Novo Endereço</p>
+                                    <button 
+                                      onClick={() => setUseCustomAddress(false)}
+                                      className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                  
+                                  <div className="space-y-4">
+                                    <div className="relative group/input">
+                                      <Search size={18} className={cn("absolute left-5 top-1/2 -translate-y-1/2 text-gray-400", loadingCep && "animate-spin")} />
+                                      <input 
+                                        type="text" 
+                                        placeholder="Digite o CEP"
+                                        value={addressData.cep}
+                                        onChange={(e) => handleCepLookup(e.target.value)}
+                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-14 pr-6 py-5 text-sm focus:bg-white focus:ring-4 focus:ring-gold/5 focus:border-gold/20 transition-all font-mono"
+                                      />
+                                    </div>
+
+                                    <AnimatePresence>
+                                      {showAddressFields && (
+                                        <motion.div 
+                                          initial={{ opacity: 0, height: 0 }}
+                                          animate={{ opacity: 1, height: 'auto' }}
+                                          exit={{ opacity: 0, height: 0 }}
+                                          className="space-y-4 overflow-hidden"
+                                        >
+                                          <div className="grid grid-cols-3 gap-3">
+                                            <input 
+                                              type="text" 
+                                              placeholder="Rua" 
+                                              value={addressData.street} 
+                                              onChange={e => setAddressData({...addressData, street: e.target.value})}
+                                              className="col-span-2 bg-gray-50 border border-gray-100 rounded-xl px-5 py-4 text-sm outline-none focus:border-gold/30"
+                                            />
+                                            <input 
+                                              type="text" 
+                                              placeholder="Nº" 
+                                              value={addressData.number} 
+                                              onChange={e => setAddressData({...addressData, number: e.target.value})}
+                                              className="bg-gray-50 border border-gray-100 rounded-xl px-5 py-4 text-sm outline-none focus:border-gold/30"
+                                            />
+                                          </div>
+                                          <div className="grid grid-cols-2 gap-3">
+                                            <input 
+                                              type="text" 
+                                              placeholder="Bairro" 
+                                              value={addressData.neighborhood} 
+                                              className="bg-gray-50 border border-gray-100 rounded-xl px-5 py-4 text-sm outline-none text-gray-400"
+                                              readOnly
+                                            />
+                                            <input 
+                                              type="text" 
+                                              placeholder="Cidade/UF" 
+                                              value={`${addressData.city}/${addressData.state}`} 
+                                              className="bg-gray-50 border border-gray-100 rounded-xl px-5 py-4 text-sm outline-none text-gray-400"
+                                              readOnly
+                                            />
+                                          </div>
+                                          <input 
+                                            type="text" 
+                                            placeholder="Complemento (Opcional)" 
+                                            value={addressData.complement} 
+                                            onChange={e => setAddressData({...addressData, complement: e.target.value})}
+                                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-5 py-4 text-sm outline-none focus:border-gold/30"
+                                          />
+                                          
+                                          <Button 
+                                            onClick={handleSaveAddress} 
+                                            variant="gold" 
+                                            size="lg"
+                                            className="w-full mt-2 shadow-xl shadow-gold/20"
+                                          >
+                                            Salvar e Usar este Endereço
+                                          </Button>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        ) : (
+                          <div className="text-center space-y-6">
+                            <p className="text-sm text-gray-500">Faça login para usar seu endereço salvo e agilizar seu pedido.</p>
+                            <Button onClick={() => navigate('/login')} variant="outline" className="w-full rounded-2xl">Entrar na Conta</Button>
+                            
+                            <div className="relative">
+                              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
+                              <div className="relative flex justify-center text-[10px] uppercase font-bold text-gray-300 bg-white px-4">Ou calcule manualmente</div>
+                            </div>
+
+                            <div className="flex gap-3">
+                              <input 
+                                type="text" 
+                                placeholder="CEP"
+                                value={cep}
+                                onChange={(e) => setCep(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                                className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-gold/30"
+                              />
+                              <Button onClick={() => calculateShipping()} disabled={isCalculating || cep.length < 8} variant="gold" className="rounded-2xl px-8">Ok</Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {shippingCost !== null && !isFreeShipping && (
+                          <div className="pt-6 border-t border-gray-50 animate-in fade-in slide-in-from-top-4 duration-700">
+                            <div className="flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100 group/shipping hover:bg-white hover:shadow-xl transition-all duration-500">
+                              <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 bg-gold/10 rounded-2xl flex items-center justify-center text-gold group-hover/shipping:bg-gold group-hover/shipping:text-white transition-all duration-500">
+                                  <Truck size={24} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">SEDEX Express</p>
+                                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">3 a 5 dias úteis</p>
+                                </div>
                               </div>
+                              <span className="text-2xl font-bold text-gold">{formatPrice(shippingCost)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Totals & Checkout */}
+                    <div className="space-y-8">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gold/10 rounded-2xl flex items-center justify-center text-gold">
+                          <CreditCard size={24} />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Resumo de Valores</h2>
+                          <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">Confira os detalhes do seu pedido</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-gray-100 shadow-lg shadow-gray-200/50 space-y-8">
+                        <div className="space-y-4">
+                          <div className="flex justify-between text-sm font-bold uppercase tracking-widest">
+                            <span className="text-gray-400">Subtotal</span>
+                            <span className="text-gray-900 tabular-nums">{formatPrice(subtotal)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-bold uppercase tracking-widest">
+                            <span className="text-gray-400">Frete</span>
+                            <span className={cn("tabular-nums", isFreeShipping ? "text-green-500" : "text-gray-900")}>
+                              {isFreeShipping ? 'Grátis' : (shippingCost !== null ? formatPrice(shippingCost) : 'A calcular')}
+                            </span>
+                          </div>
+                          
+                          {storeConfig.freeShippingEnabled && subtotal < freeShippingThreshold && (
+                            <div className="bg-gray-50 p-6 rounded-3xl space-y-4 border border-gray-100">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Progresso Frete Grátis</span>
+                                <span className="text-[10px] font-bold text-gold">{Math.round((subtotal / freeShippingThreshold) * 100)}%</span>
+                              </div>
+                              <div className="h-2 w-full bg-white rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(subtotal / freeShippingThreshold) * 100}%` }}
+                                  className="h-full bg-gold shadow-[0_0_15px_rgba(212,175,55,0.4)]"
+                                />
+                              </div>
+                              <p className="text-[10px] text-gray-400 text-center font-bold uppercase tracking-widest">
+                                Faltam {formatPrice(freeShippingThreshold - subtotal)} para frete grátis
+                              </p>
                             </div>
                           )}
                         </div>
-                      ) : (
-                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-center space-y-3">
-                          <p className="text-xs text-gray-500">Faça login para usar seu endereço salvo</p>
-                          <Button onClick={() => navigate('/login')} variant="outline" size="sm" className="w-full">Entrar</Button>
-                          
-                          <div className="relative py-2">
-                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                            <div className="relative flex justify-center text-[10px] uppercase font-bold text-gray-300 bg-gray-50 px-2">Ou calcule manualmente</div>
-                          </div>
 
-                          <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              placeholder="CEP"
-                              value={cep}
-                              onChange={(e) => setCep(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                              className="flex-1 bg-white border border-gray-100 rounded-xl px-4 py-2 text-xs outline-none focus:border-gold/30"
-                            />
-                            <Button onClick={() => calculateShipping()} disabled={isCalculating || cep.length < 8} variant="gold" size="sm">Ok</Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {shippingCost !== null && !isFreeShipping && (
-                        <div className="space-y-3 pt-3 animate-in fade-in slide-in-from-top-2 duration-500">
-                          <div className="flex items-center gap-3">
-                            <div className="h-[1px] flex-1 bg-gray-100" />
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider whitespace-nowrap">
-                              Frete Estimado
-                            </p>
-                            <div className="h-[1px] flex-1 bg-gray-100" />
-                          </div>
-                          
-                          <div className="group/option relative flex items-center justify-between p-4 bg-gray-50 rounded-[2rem] border border-gray-100 hover:bg-white hover:shadow-lg transition-all duration-300 cursor-default">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-gold/10 rounded-lg flex items-center justify-center text-gold group-hover/option:bg-gold group-hover/option:text-white transition-all duration-300">
-                                <Truck size={20} />
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">SEDEX Express</p>
-                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">3 dias úteis</p>
-                              </div>
+                        <div className="pt-8 border-t border-gray-100">
+                          <div className="flex justify-between items-end mb-8">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-2">Total Final</p>
+                              <p className="text-5xl font-bold tracking-tighter text-gray-900 tabular-nums">{formatPrice(total)}</p>
                             </div>
-                            <span className="text-lg font-bold text-gold">{formatPrice(shippingCost)}</span>
+                            <div className="text-right hidden sm:block">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-green-500 mb-1">Parcelamento</p>
+                              <p className="text-sm font-bold text-gray-900">Até 12x de {formatPrice(total / 12)}</p>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
 
-                    <div className="space-y-3 px-2">
-                      <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                        <span className="text-gray-400">Subtotal</span>
-                        <span className="text-gray-900">{formatPrice(subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                        <span className="text-gray-400">Frete</span>
-                        <span className={cn(isFreeShipping ? "text-green-500" : "text-gray-900")}>
-                          {isFreeShipping ? 'Grátis' : formatPrice(shipping)}
-                        </span>
-                      </div>
-                      
-                      {storeConfig.freeShippingEnabled && subtotal < freeShippingThreshold && (
-                        <div className="bg-white p-4 rounded-[2rem] space-y-3 border border-gray-100 shadow-sm">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Progresso Frete Grátis</span>
-                            <span className="text-[10px] font-bold text-gold">{Math.round((subtotal / freeShippingThreshold) * 100)}%</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${(subtotal / freeShippingThreshold) * 100}%` }}
-                              className="h-full bg-gold shadow-[0_0_10px_rgba(212,175,55,0.5)]"
-                            />
-                          </div>
-                          <p className="text-[10px] text-gray-400 text-center font-medium uppercase tracking-wider">
-                            Faltam {formatPrice(freeShippingThreshold - subtotal)} para frete grátis
-                          </p>
+                          <Button 
+                            onClick={handleCheckout}
+                            variant="gold" 
+                            size="lg" 
+                            className="w-full h-20 text-xl font-bold shadow-2xl shadow-gold/20 group rounded-[1.5rem]"
+                            disabled={cart.length === 0}
+                          >
+                            Finalizar Compra
+                            <ArrowRight size={24} className="ml-3 group-hover:translate-x-2 transition-transform" />
+                          </Button>
                         </div>
-                      )}
+
+                        <div className="flex items-center justify-center gap-8 pt-4 text-gray-300">
+                          <div className="flex flex-col items-center gap-2">
+                            <ShieldCheck size={24} />
+                            <span className="text-[8px] font-bold uppercase tracking-[0.2em]">Seguro</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-2">
+                            <Truck size={24} />
+                            <span className="text-[8px] font-bold uppercase tracking-[0.2em]">Entrega</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-2">
+                            <CreditCard size={24} />
+                            <span className="text-[8px] font-bold uppercase tracking-[0.2em]">Cartão</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="pt-8 border-t border-gray-200 flex justify-between items-end">
+                {/* Trust Badges Footer */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+                  <div className="p-8 bg-white border border-gray-100 rounded-[2.5rem] flex items-center gap-6 hover:shadow-xl transition-all duration-500 group">
+                    <div className="w-14 h-14 bg-gold/10 rounded-2xl flex items-center justify-center text-gold group-hover:bg-gold group-hover:text-white transition-all duration-500">
+                      <ShieldCheck size={32} />
+                    </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Total do Pedido</p>
-                      <p className="text-4xl font-bold tracking-tight text-gray-900">{formatPrice(total)}</p>
+                      <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">Garantia Chronos</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">2 anos de cobertura total</p>
                     </div>
                   </div>
-
-                  <Button 
-                    onClick={handleCheckout}
-                    disabled={cart.length === 0}
-                    variant="gold"
-                    size="lg"
-                    className="w-full py-6"
-                    icon={ArrowRight}
-                  >
-                    Finalizar Pedido
-                  </Button>
-                </div>
-
-                {/* Trust Badges */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-6 bg-white border border-gray-100 rounded-[2rem] flex flex-col items-center text-center gap-3 hover:shadow-lg transition-all duration-300">
-                    <ShieldCheck size={28} className="text-gold" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-tight">Autenticidade Garantida</span>
+                  <div className="p-8 bg-white border border-gray-100 rounded-[2.5rem] flex items-center gap-6 hover:shadow-xl transition-all duration-500 group">
+                    <div className="w-14 h-14 bg-gold/10 rounded-2xl flex items-center justify-center text-gold group-hover:bg-gold group-hover:text-white transition-all duration-500">
+                      <Truck size={32} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">Entrega Segurada</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Rastreio em tempo real</p>
+                    </div>
                   </div>
-                  <div className="p-6 bg-white border border-gray-100 rounded-[2rem] flex flex-col items-center text-center gap-3 hover:shadow-lg transition-all duration-300">
-                    <Truck size={28} className="text-gold" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-tight">Entrega Segurada</span>
+                  <div className="p-8 bg-white border border-gray-100 rounded-[2.5rem] flex items-center gap-6 hover:shadow-xl transition-all duration-500 group">
+                    <div className="w-14 h-14 bg-gold/10 rounded-2xl flex items-center justify-center text-gold group-hover:bg-gold group-hover:text-white transition-all duration-500">
+                      <CreditCard size={32} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">Compra Segura</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Criptografia de ponta</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </main>
 
-      <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-gray-100 text-center">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-          Desenvolvido por Gustavo Walker, CEO da DS Company
-        </p>
-      </footer>
+      <Footer storeConfig={storeConfig} />
     </div>
   );
 };

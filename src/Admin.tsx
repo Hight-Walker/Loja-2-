@@ -51,7 +51,8 @@ const ProductModal = ({ product, collections, onClose, onSave, showToast }: { pr
     description: '',
     images: [],
     category: collections[0] || 'Luxo',
-    isBestSeller: false
+    isBestSeller: false,
+    inStock: true
   });
 
   const [newImageUrl, setNewImageUrl] = useState('');
@@ -169,26 +170,47 @@ const ProductModal = ({ product, collections, onClose, onSave, showToast }: { pr
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase truncate">Imagem {idx + 1} {idx === 0 && "(Principal)"}</p>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-2">
                         <button 
+                          type="button"
                           onClick={() => moveImage(idx, 'up')}
                           disabled={idx === 0}
-                          className="p-1.5 text-gray-400 hover:text-gold disabled:opacity-20"
+                          className="p-2 bg-white rounded-xl text-gray-400 hover:text-gold disabled:opacity-20 shadow-sm border border-gray-100 transition-all active:scale-95"
+                          title="Mover para cima"
                         >
-                          <ChevronDown size={14} className="rotate-180" />
+                          <ChevronDown size={18} className="rotate-180" />
                         </button>
                         <button 
+                          type="button"
                           onClick={() => moveImage(idx, 'down')}
                           disabled={idx === formData.images.length - 1}
-                          className="p-1.5 text-gray-400 hover:text-gold disabled:opacity-20"
+                          className="p-2 bg-white rounded-xl text-gray-400 hover:text-gold disabled:opacity-20 shadow-sm border border-gray-100 transition-all active:scale-95"
+                          title="Mover para baixo"
                         >
-                          <ChevronDown size={14} />
+                          <ChevronDown size={18} />
                         </button>
+                        {idx !== 0 && (
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newImages = [...formData.images];
+                              const [moved] = newImages.splice(idx, 1);
+                              newImages.unshift(moved);
+                              setFormData({ ...formData, images: newImages });
+                            }}
+                            className="p-2 bg-white rounded-xl text-gray-400 hover:text-gold shadow-sm border border-gray-100 transition-all active:scale-95"
+                            title="Definir como principal"
+                          >
+                            <Star size={18} />
+                          </button>
+                        )}
                         <button 
+                          type="button"
                           onClick={() => removeImage(idx)}
-                          className="p-1.5 text-gray-400 hover:text-red-500"
+                          className="p-2 bg-white rounded-xl text-gray-400 hover:text-red-500 shadow-sm border border-gray-100 transition-all active:scale-95"
+                          title="Remover"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </div>
@@ -212,6 +234,25 @@ const ProductModal = ({ product, collections, onClose, onSave, showToast }: { pr
               <option value="">Selecione uma coleção</option>
               {collections.map((c: string) => <option key={c} value={c}>{c}</option>)}
             </select>
+          </div>
+          <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-[2rem]">
+            <div className="flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-1">Em Estoque</p>
+              <p className="text-[8px] text-gray-400">Disponível para compra.</p>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setFormData({...formData, inStock: !formData.inStock})}
+              className={cn(
+                "w-10 h-5 rounded-full transition-all relative",
+                formData.inStock !== false ? "bg-green-500" : "bg-red-500"
+              )}
+            >
+              <div className={cn(
+                "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
+                formData.inStock !== false ? "right-1" : "left-1"
+              )} />
+            </button>
           </div>
           <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-[2rem]">
             <div className="flex-1">
@@ -1085,11 +1126,16 @@ export const AdminDashboard = () => {
                               <p className="font-bold text-gray-900">{formatPrice(product.price)}</p>
                             </td>
                             <td className="px-10 py-6">
-                              {product.isBestSeller ? (
-                                <Badge variant="gold">Best Seller</Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-gray-300 border-gray-200">Padrão</Badge>
-                              )}
+                              <div className="flex flex-col gap-2">
+                                {product.inStock !== false ? (
+                                  <Badge variant="success">Em Estoque</Badge>
+                                ) : (
+                                  <Badge variant="error">Esgotado</Badge>
+                                )}
+                                {product.isBestSeller && (
+                                  <Badge variant="gold">Best Seller</Badge>
+                                )}
+                              </div>
                             </td>
                             <td className="px-10 py-6 text-right">
                               <div className="flex items-center justify-end gap-2">

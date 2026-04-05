@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, ArrowLeft, CheckCircle2, Star, Shield, Truck, ArrowRight, Share2, Heart, ChevronRight, ChevronLeft } from 'lucide-react';
-import { Product, CartItem } from './types';
-import { getProducts } from './lib/storage';
+import { Product, CartItem, StoreConfig } from './types';
+import { getProducts, getStoreConfig } from './lib/storage';
 import { formatPrice, cn } from './lib/utils';
 import { Toast, ToastType, Button, Badge } from './components/UI';
+import { Footer } from './components/Footer';
 
 export const ProductPage = () => {
   const { id } = useParams();
@@ -17,6 +18,11 @@ export const ProductPage = () => {
   const [cartCount, setCartCount] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
+
+  useEffect(() => {
+    setStoreConfig(getStoreConfig());
+  }, []);
 
   useEffect(() => {
     const updateCartCount = () => {
@@ -205,6 +211,9 @@ export const ProductPage = () => {
                     <Star size={10} fill="currentColor" /> Best Seller
                   </Badge>
                 )}
+                {product.inStock === false && (
+                  <Badge variant="error">ESGOTADO</Badge>
+                )}
               </div>
               
               <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">{product.name}</h1>
@@ -213,7 +222,12 @@ export const ProductPage = () => {
                 <div className="text-3xl font-bold text-gold">{formatPrice(product.price)}</div>
                 <div className="h-8 w-[1px] bg-gray-100" />
                 <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                  Pronta Entrega <br /> <span className="text-green-500">Em Estoque</span>
+                  Pronta Entrega <br /> 
+                  {product.inStock !== false ? (
+                    <span className="text-green-500">Em Estoque</span>
+                  ) : (
+                    <span className="text-red-500">Esgotado</span>
+                  )}
                 </div>
               </div>
               
@@ -244,8 +258,9 @@ export const ProductPage = () => {
                   variant="outline"
                   size="lg"
                   className="flex-1"
+                  disabled={product.inStock === false}
                 >
-                  Adicionar ao Carrinho
+                  {product.inStock === false ? "Produto Esgotado" : "Adicionar ao Carrinho"}
                 </Button>
                 <Button 
                   onClick={() => {
@@ -256,8 +271,9 @@ export const ProductPage = () => {
                   size="lg"
                   className="flex-1"
                   icon={ArrowRight}
+                  disabled={product.inStock === false}
                 >
-                  Comprar Agora
+                  {product.inStock === false ? "Esgotado" : "Comprar Agora"}
                 </Button>
               </div>
             </motion.div>
@@ -302,6 +318,7 @@ export const ProductPage = () => {
           )}
         </div>
       </main>
+      {storeConfig && <Footer storeConfig={storeConfig} />}
     </div>
   );
 };

@@ -10,6 +10,7 @@ import { Product, CartItem, Order, User, StoreConfig } from './types';
 import { getProducts, saveOrder, getCurrentUser, getStoreConfig } from './lib/storage';
 import { cn, formatPrice } from './lib/utils';
 import { Toast, ToastType, Button, Badge } from './components/UI';
+import { Footer } from './components/Footer';
 
 export const CheckoutPage = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -322,11 +323,7 @@ export const CheckoutPage = () => {
         </div>
       </main>
 
-      <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-gray-100 text-center">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-          Desenvolvido por Gustavo Walker, CEO da DS Company
-        </p>
-      </footer>
+      <Footer storeConfig={storeConfig} />
     </div>
   );
 };

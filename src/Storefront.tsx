@@ -6,6 +6,7 @@ import { Product, CartItem, Order, User, StoreConfig } from './types';
 import { getProducts, saveOrder, getCurrentUser, setCurrentUser, clearAllSessions, getStoreConfig } from './lib/storage';
 import { cn, formatPrice } from './lib/utils';
 import { Toast, ToastType, Button, SectionHeading, Badge } from './components/UI';
+import { Footer } from './components/Footer';
 
 // --- Sub-components ---
 
@@ -165,31 +166,26 @@ const ProductCard = ({ product, onAddToCart }: any) => (
           </Badge>
         </div>
       )}
+
+      {product.inStock === false && (
+        <div className="absolute top-4 right-4 z-10">
+          <Badge variant="outline" className="bg-white/90 backdrop-blur-sm text-red-600 border-red-200">
+            ESGOTADO
+          </Badge>
+        </div>
+      )}
       
-      <Link to={`/product/${product.id}`}>
+      <Link to={`/product/${product.id}`} className="block w-full h-full">
         <img 
           src={product.images[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=800"} 
           alt={product.name} 
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+          className={cn(
+            "w-full h-full object-cover transition-transform duration-500 group-hover:scale-105",
+            product.inStock === false && "grayscale opacity-60"
+          )} 
           referrerPolicy="no-referrer" 
         />
       </Link>
-
-      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-        <Link to={`/product/${product.id}`} className="bg-white text-gray-900 p-3 rounded-full hover:bg-gold hover:text-white transition-colors">
-          <Search size={20} />
-        </Link>
-        <button 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onAddToCart(product);
-          }} 
-          className="bg-gold text-white p-3 rounded-full hover:bg-white hover:text-gray-900 transition-colors"
-        >
-          <ShoppingBag size={20} />
-        </button>
-      </div>
     </div>
 
     <div className="text-center">
@@ -200,82 +196,6 @@ const ProductCard = ({ product, onAddToCart }: any) => (
       <p className="text-gray-900 font-semibold">{formatPrice(product.price)}</p>
     </div>
   </motion.div>
-);
-
-const Footer = ({ storeConfig }: { storeConfig: StoreConfig }) => (
-  <footer className="bg-gray-900 text-white pt-20 pb-10 px-6">
-    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-      <div className="md:col-span-1">
-        <Link to="/" className="inline-block mb-6">
-          {storeConfig.logo ? (
-            <img src={storeConfig.logo} alt={storeConfig.name} className="h-10 w-auto object-contain" referrerPolicy="no-referrer" />
-          ) : (
-            <h2 className="text-2xl font-bold tracking-tight">{storeConfig.name.toUpperCase()}<span className="text-gold">.</span></h2>
-          )}
-        </Link>
-        <p className="text-gray-400 text-sm leading-relaxed mb-6">{storeConfig.description}</p>
-        <div className="flex space-x-4">
-          {storeConfig.instagram && (
-            <a 
-              href={storeConfig.instagram.startsWith('http') ? storeConfig.instagram : `https://instagram.com/${storeConfig.instagram.replace('@', '')}`} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-gray-400 hover:text-gold transition-colors"
-            >
-              <Instagram size={20} />
-            </a>
-          )}
-          <a href="#" className="text-gray-400 hover:text-gold transition-colors"><Globe size={20} /></a>
-        </div>
-      </div>
-
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider mb-6 text-gold">Explorar</h4>
-        <ul className="space-y-4 text-gray-400 text-sm">
-          <li><a href="#products" className="hover:text-gold transition-colors">Coleções</a></li>
-          <li><a href="#" className="hover:text-gold transition-colors">Novidades</a></li>
-        </ul>
-      </div>
-
-      <div className="md:col-span-2">
-        <h4 className="text-xs font-bold uppercase tracking-wider mb-6 text-gold">Atendimento</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="flex items-start gap-3">
-            <Mail size={18} className="text-gold shrink-0" />
-            <div>
-              <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">E-mail</p>
-              <p className="text-sm">{storeConfig.email}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Phone size={18} className="text-gold shrink-0" />
-            <div>
-              <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">Telefone</p>
-              <p className="text-sm">{storeConfig.phone}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 sm:col-span-2">
-            <MapPin size={18} className="text-gold shrink-0" />
-            <div>
-              <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">Endereço</p>
-              <p className="text-sm leading-relaxed">{storeConfig.address}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div className="max-w-7xl mx-auto pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-6">
-      <div className="text-center md:text-left">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">© 2024 {storeConfig.name.toUpperCase()} PREMIUM WATCHES.</p>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gold/60">DESENVOLVIDO POR GUSTAVO WALKER, CEO DA DS COMPANY</p>
-      </div>
-      <div className="flex space-x-8 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-        <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-        <a href="#" className="hover:text-white transition-colors">Termos</a>
-      </div>
-    </div>
-  </footer>
 );
 
 export const Storefront = () => {
