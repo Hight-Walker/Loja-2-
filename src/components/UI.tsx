@@ -55,7 +55,7 @@ export interface ModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 }
 
 export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) => {
@@ -63,7 +63,9 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }:
     sm: 'max-w-sm',
     md: 'max-w-md',
     lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
+    xl: 'max-w-4xl',
+    '2xl': 'max-w-6xl',
+    full: 'max-w-[95vw]'
   };
 
   return (
@@ -199,7 +201,7 @@ export const SectionHeading = ({
   </div>
 );
 
-export const Badge = ({ children, variant = 'gold', className }: { children: React.ReactNode, variant?: 'gold' | 'black' | 'gray' | 'success' | 'error' | 'warning' | 'outline', className?: string }) => {
+export const Badge = ({ children, variant = 'gold', className }: { children: React.ReactNode, variant?: 'gold' | 'black' | 'gray' | 'success' | 'error' | 'warning' | 'outline' | 'blue', className?: string }) => {
   const variants = {
     gold: "bg-gold text-white",
     black: "bg-gray-900 text-white",
@@ -207,7 +209,8 @@ export const Badge = ({ children, variant = 'gold', className }: { children: Rea
     success: "bg-green-100 text-green-700",
     error: "bg-red-100 text-red-700",
     warning: "bg-amber-100 text-amber-700",
-    outline: "bg-transparent border border-gray-200 text-gray-500"
+    outline: "bg-transparent border border-gray-200 text-gray-500",
+    blue: "bg-blue-100 text-blue-700"
   };
 
   return (

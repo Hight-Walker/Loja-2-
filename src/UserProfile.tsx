@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   User as UserIcon, ShoppingBag, MapPin, Phone, Mail, 
   Calendar, Hash, ArrowLeft, LogOut, Package, 
-  ChevronRight, Lock, Star, ShieldCheck, Clock,
+  ChevronRight, Lock, Star, ShieldCheck, Clock, Truck,
   ArrowRight, Edit3, Save, Trash2, CreditCard
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -337,10 +337,23 @@ export const UserProfile = () => {
                         <div className="flex-1 space-y-2 text-center md:text-left">
                           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                             <span className="text-xl font-bold tracking-tight text-gray-900">#{order.id}</span>
-                            <Badge variant={order.status === 'Entregue' ? 'gold' : 'black'}>
+                            <Badge variant={
+                              order.status === 'Entregue' ? 'success' : 
+                              order.status === 'Enviado' ? 'success' :
+                              order.status === 'Processado' ? 'blue' :
+                              order.status === 'Processando' ? 'warning' :
+                              order.status === 'Cancelado' ? 'error' : 'gray'
+                            }>
                               {order.status}
                             </Badge>
                           </div>
+                          {order.trackingNumber && (
+                            <div className="flex items-center gap-2 mt-2 bg-white/50 px-3 py-1.5 rounded-full border border-gold/10 w-fit">
+                              <Truck size={12} className="text-gold" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Rastreio: </span>
+                              <span className="text-[10px] font-mono font-bold text-gold uppercase tracking-widest">{order.trackingNumber}</span>
+                            </div>
+                          )}
                           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
                             <span className="flex items-center gap-2"><Calendar size={12} /> {new Date(order.date).toLocaleDateString('pt-BR')}</span>
                             <span className="flex items-center gap-2"><CreditCard size={12} /> {order.paymentMethod}</span>

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { CartItem, StoreConfig, User } from './types';
-import { getStoreConfig, getCurrentUser, updateUser, setCurrentUser } from './lib/storage';
+import { getStoreConfig, getCurrentUser, updateUser, setCurrentUser, getDeveloperConfig } from './lib/storage';
 import { cn, formatPrice } from './lib/utils';
 import { Toast, ToastType, Button, Badge } from './components/UI';
 import { Footer } from './components/Footer';
@@ -124,7 +124,8 @@ export const CartPage = () => {
     if (cleanValue.length === 8) {
       setLoadingCep(true);
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cleanValue}/json/`);
+        const config = getDeveloperConfig();
+        const response = await fetch(`${config.viacepApiUrl}/${cleanValue}/json/`);
         const data = await response.json();
         
         if (!data.erro) {

@@ -22,6 +22,8 @@ export const Login = () => {
       if (user.role === 'admin') {
         localStorage.setItem('chronos_admin_auth', 'true');
         navigate('/manager');
+      } else if (user.role === 'dev') {
+        navigate('/dev');
       } else {
         navigate('/');
       }

@@ -8,28 +8,69 @@ import { ProductPage } from './ProductPage';
 import { UserProfile } from './UserProfile';
 import { CheckoutPage } from './CheckoutPage';
 import { CartPage } from './CartPage';
-import { getCurrentUser } from './lib/storage';
+import { Developer } from './Developer';
+import { Maintenance } from './Maintenance';
+import { getCurrentUser, getDeveloperConfig } from './lib/storage';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const user = getCurrentUser();
-  const isAdmin = user?.role === 'admin';
-  return isAdmin ? <>{children}</> : <Navigate to="/login" />;
+  const config = getDeveloperConfig();
+  if (config.systemStatus === 'maintenance' && user?.role !== 'dev') {
+    return <Navigate to="/maintenance" />;
+  }
+  const isAuthorized = user?.role === 'admin' || user?.role === 'dev';
+  return isAuthorized ? <>{children}</> : <Navigate to="/login" />;
 };
 
 const UserRoute = ({ children }: { children: React.ReactNode }) => {
   const user = getCurrentUser();
-  return user ? <>{children}</> : <Navigate to="/login" />;
+  const config = getDeveloperConfig();
+  if (config.systemStatus === 'maintenance' && user?.role !== 'dev') {
+    return <Navigate to="/maintenance" />;
+  }
+  if (!user) return <Navigate to="/login" />;
+  if (user.role === 'dev') return <Navigate to="/dev" />;
+  return <>{children}</>;
+};
+
+const DevRoute = ({ children }: { children: React.ReactNode }) => {
+  const user = getCurrentUser();
+  const isDev = user?.role === 'dev';
+  return isDev ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const user = getCurrentUser();
+  const config = getDeveloperConfig();
+  if (config.systemStatus === 'maintenance' && user?.role !== 'dev') {
+    return <Navigate to="/maintenance" />;
+  }
+  return <>{children}</>;
 };
 
 export default function App() {
+  React.useEffect(() => {
+    const config = getDeveloperConfig();
+    if (config.googleFontsUrl) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = config.googleFontsUrl + '/css2?family=Inter:wght@300;400;500;600;700;800&display=swap';
+      document.head.appendChild(link);
+      return () => {
+        document.head.removeChild(link);
+      };
+    }
+  }, []);
+
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Storefront />} />
-        <Route path="/product/:id" element={<ProductPage />} />
+        <Route path="/" element={<PublicRoute><Storefront /></PublicRoute>} />
+        <Route path="/product/:id" element={<PublicRoute><ProductPage /></PublicRoute>} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/cart" element={<CartPage />} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/cart" element={<PublicRoute><CartPage /></PublicRoute>} />
+        <Route path="/maintenance" element={<Maintenance />} />
         <Route 
           path="/profile" 
           element={
@@ -52,6 +93,14 @@ export default function App() {
             <PrivateRoute>
               <AdminDashboard />
             </PrivateRoute>
+          } 
+        />
+        <Route 
+          path="/dev" 
+          element={
+            <DevRoute>
+              <Developer />
+            </DevRoute>
           } 
         />
       </Routes>

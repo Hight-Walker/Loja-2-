@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, Package, ShoppingCart, BarChart3, Plus, Edit2, Trash2, 
   TrendingUp, DollarSign, Users, ArrowUpRight, ArrowDownRight, LogOut, X, Image as ImageIcon,
   Store, Globe, Instagram, Mail, Phone, MapPin, Menu, AlertCircle, Truck, User as ProfileIcon, Hash, Calendar, ArrowLeft, Lock,
-  ChevronRight, ChevronDown, Eye, Star, Filter, Search, MoreVertical, ExternalLink, CheckCircle, XCircle, Clock, Save, User as UserIcon
+  ChevronRight, ChevronDown, Eye, Star, Filter, Search, MoreVertical, ExternalLink, CheckCircle, XCircle, Clock, Save, User as UserIcon, Printer
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Product, Order, AnalyticsData, User, StoreConfig, OrderStatus, PaymentMethod } from './types';
@@ -15,6 +15,7 @@ import {
 } from './lib/storage';
 import { formatPrice, cn } from './lib/utils';
 import { Toast, Modal, Button, Badge, SectionHeading, ToastType } from './components/UI';
+import { ContentDeclaration } from './components/ContentDeclaration';
 
 // --- Admin Components ---
 
@@ -292,77 +293,197 @@ const ProductModal = ({ product, collections, onClose, onSave, showToast }: { pr
   );
 };
 
-const OrderModal = ({ order, onClose, onSave }: { order: Order, onClose: () => void, onSave: (o: Order) => void }) => {
+const OrderModal = ({ order, onClose, onSave, storeConfig }: { order: Order, onClose: () => void, onSave: (o: Order) => void, storeConfig: StoreConfig }) => {
   const [formData, setFormData] = useState<Order>({ ...order });
+  const [showDeclaration, setShowDeclaration] = useState(false);
 
-  const statuses: OrderStatus[] = ['Pendente', 'Processando', 'Enviado', 'Entregue', 'Cancelado'];
+  // Auto-save logic
+  useEffect(() => {
+    const normalize = (o: any) => ({
+      ...o,
+      trackingNumber: o.trackingNumber || '',
+      status: o.status || 'Pendente',
+      paymentMethod: o.paymentMethod || 'Pix'
+    });
+
+    const timer = setTimeout(() => {
+      const currentData = JSON.stringify(normalize(formData));
+      const originalData = JSON.stringify(normalize(order));
+      
+      if (currentData !== originalData) {
+        onSave(formData);
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [formData, order, onSave]);
+
+  const statuses: OrderStatus[] = ['Pendente', 'Processando', 'Processado', 'Enviado', 'Entregue', 'Cancelado'];
   const paymentMethods: PaymentMethod[] = ['Cartão de Crédito', 'Boleto', 'Pix'];
+
+  const handlePrint = () => {
+    setFormData(prev => ({ ...prev, status: 'Processado' }));
+    window.print();
+  };
+
+  if (showDeclaration) {
+    return (
+      <Modal 
+        isOpen={true} 
+        onClose={() => setShowDeclaration(false)} 
+        title="Declaração de Conteúdo"
+        size="2xl"
+      >
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 no-print bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-gray-900">Pronto para Envio</p>
+              <p className="text-xs text-gray-400 font-medium italic">A declaração será impressa em duas cópias (A4). Selecione "Salvar como PDF" na tela de impressão se desejar o arquivo digital.</p>
+            </div>
+            <div className="flex gap-4 w-full sm:w-auto">
+              <Button variant="outline" onClick={() => setShowDeclaration(false)} className="flex-1 sm:flex-none">Voltar</Button>
+              <Button variant="secondary" onClick={handlePrint} className="flex-1 sm:flex-none">Salvar PDF</Button>
+              <Button onClick={handlePrint} icon={Printer} className="flex-1 sm:flex-none shadow-lg shadow-gold/20">Imprimir</Button>
+            </div>
+          </div>
+          <div className="bg-white overflow-auto p-2 sm:p-8 rounded-xl border border-gray-100 shadow-inner">
+            <ContentDeclaration order={order} storeConfig={storeConfig} />
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal 
       isOpen={true} 
       onClose={onClose} 
       title={`Pedido #${order.id.slice(0, 8)}`}
+      size="2xl"
     >
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="space-y-8 no-print">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
           <div className="space-y-4">
             <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status do Pedido</h4>
-            <select 
-              value={formData.status} 
-              onChange={e => setFormData({...formData, status: e.target.value as OrderStatus})} 
-              className="w-full bg-gray-50 border-none rounded-[2rem] p-4 outline-none focus:ring-2 focus:ring-gold transition-all appearance-none"
-            >
-              {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <div className="relative">
+              <select 
+                value={formData.status} 
+                onChange={e => setFormData({...formData, status: e.target.value as OrderStatus})} 
+                className="w-full bg-gray-50 border-none rounded-[2rem] p-4 pr-12 outline-none focus:ring-2 focus:ring-gold transition-all appearance-none text-sm font-medium"
+              >
+                {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <ChevronDown size={16} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
           </div>
           <div className="space-y-4">
             <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forma de Pagamento</h4>
-            <select 
-              value={formData.paymentMethod} 
-              onChange={e => setFormData({...formData, paymentMethod: e.target.value as PaymentMethod})} 
-              className="w-full bg-gray-50 border-none rounded-[2rem] p-4 outline-none focus:ring-2 focus:ring-gold transition-all appearance-none"
-            >
-              {paymentMethods.map(pm => <option key={pm} value={pm}>{pm}</option>)}
-            </select>
+            <div className="relative">
+              <select 
+                value={formData.paymentMethod} 
+                onChange={e => setFormData({...formData, paymentMethod: e.target.value as PaymentMethod})} 
+                className="w-full bg-gray-50 border-none rounded-[2rem] p-4 pr-12 outline-none focus:ring-2 focus:ring-gold transition-all appearance-none text-sm font-medium"
+              >
+                {paymentMethods.map(pm => <option key={pm} value={pm}>{pm}</option>)}
+              </select>
+              <ChevronDown size={16} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
           </div>
         </div>
 
         <div className="space-y-4">
-          <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Informações do Cliente</h4>
-          <div className="p-6 bg-gray-50 rounded-[2rem] space-y-2">
-            <p className="text-sm font-bold">{formData.customer.name}</p>
-            <p className="text-xs text-gray-500">{formData.customer.email}</p>
-            <p className="text-xs text-gray-500">{formData.customer.address}</p>
+          <div className="flex justify-between items-center">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Código de Rastreio</h4>
+            {formData.trackingNumber && (
+              <span className="text-[9px] font-bold text-green-500 uppercase tracking-widest flex items-center gap-1">
+                <CheckCircle size={10} /> Salvo Automaticamente
+              </span>
+            )}
+          </div>
+          <div className="relative group">
+            <Truck size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gold transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Ex: AA123456789BR"
+              value={formData.trackingNumber || ''} 
+              onChange={e => {
+                const val = e.target.value;
+                setFormData(prev => ({
+                  ...prev,
+                  trackingNumber: val,
+                  status: val.trim() ? 'Enviado' : prev.status
+                }));
+              }}
+              className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-6 py-4 outline-none focus:ring-2 focus:ring-gold transition-all font-mono uppercase text-sm placeholder:font-sans placeholder:normal-case"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+          <div className="space-y-4">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Informações do Cliente</h4>
+            <div className="p-6 bg-gray-50 rounded-[2.5rem] space-y-3 border border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-gold shadow-sm">
+                  <UserIcon size={14} />
+                </div>
+                <p className="text-sm font-bold text-gray-900">{formData.customer.name}</p>
+              </div>
+              <div className="space-y-1 pl-11">
+                <p className="text-xs text-gray-500 flex items-center gap-2"><Mail size={10} /> {formData.customer.email}</p>
+                <p className="text-xs text-gray-500 flex items-start gap-2"><MapPin size={10} className="mt-0.5 shrink-0" /> {formData.customer.address}</p>
+                {formData.customer.cpf && <p className="text-xs text-gray-500 font-mono flex items-center gap-2"><Hash size={10} /> CPF: {formData.customer.cpf}</p>}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 flex flex-col justify-end">
+            <Button 
+              variant="outline" 
+              className="w-full border-dashed border-2 hover:border-gold hover:bg-gold/5 h-full min-h-[120px] flex flex-col gap-3 rounded-[2.5rem]"
+              onClick={() => setShowDeclaration(true)}
+            >
+              <Printer size={24} className="text-gold" />
+              <div className="text-center">
+                <span className="block text-sm font-bold text-gray-900">Declaração Correios</span>
+                <span className="block text-[10px] text-gray-400 uppercase tracking-widest mt-1">Gerar e Imprimir</span>
+              </div>
+            </Button>
           </div>
         </div>
 
         <div className="space-y-4">
           <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Itens do Pedido</h4>
-          <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+          <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
             {formData.items.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-[2rem]">
+              <motion.div 
+                key={idx} 
+                whileHover={{ x: 5 }}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-[2rem] border border-gray-100 hover:border-gold/20 hover:bg-white hover:shadow-md transition-all duration-300 group"
+              >
                 <div className="flex items-center gap-4">
-                  <img src={item.image} alt={item.name} className="w-12 h-12 rounded-[2rem] object-cover" referrerPolicy="no-referrer" />
+                  <div className="relative">
+                    <img src={item.image} alt={item.name} className="w-14 h-14 rounded-[1.5rem] object-cover shadow-sm group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                    <span className="absolute -top-2 -right-2 w-6 h-6 bg-gold text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                      {item.quantity}
+                    </span>
+                  </div>
                   <div>
-                    <p className="text-sm font-bold truncate max-w-[200px]">{item.name}</p>
-                    <p className="text-[10px] text-gray-400">{item.quantity}x {formatPrice(item.price)}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate max-w-[150px] sm:max-w-[250px]">{item.name}</p>
+                    <p className="text-[10px] text-gray-400 font-medium">{formatPrice(item.price)} cada</p>
                   </div>
                 </div>
                 <span className="text-sm font-bold text-gold">{formatPrice(item.price * item.quantity)}</span>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
 
-        <div className="flex justify-between items-center pt-6 border-t">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total do Pedido</p>
-            <p className="text-2xl font-sans text-gold">{formatPrice(formData.total)}</p>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-8 border-t border-gray-100">
+          <div className="text-center sm:text-left">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total do Pedido</p>
+            <p className="text-3xl font-sans text-gold">{formatPrice(formData.total)}</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose}>Fechar</Button>
-            <Button onClick={() => onSave(formData)}>Salvar Alterações</Button>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Button variant="outline" onClick={onClose} className="flex-1 sm:flex-none">Fechar Detalhes</Button>
           </div>
         </div>
       </div>
@@ -591,16 +712,21 @@ export const AdminDashboard = () => {
     setToast({ message, type, isVisible: true });
   };
 
-  const handleSaveProduct = (product: Product) => {
-    let newProducts;
-    if (products.find(p => p.id === product.id)) {
-      newProducts = products.map(p => p.id === product.id ? product : p);
-    } else {
-      newProducts = [...products, product];
-    }
-    setProducts(newProducts);
-    // Auto-save handled by useEffect
-  };
+  const handleSaveProduct = useCallback((product: Product) => {
+    setProducts(prev => {
+      let newProducts;
+      if (prev.find(p => p.id === product.id)) {
+        newProducts = prev.map(p => p.id === product.id ? product : p);
+      } else {
+        newProducts = [...prev, product];
+      }
+      saveProducts(newProducts);
+      return newProducts;
+    });
+    setIsModalOpen(false);
+    setEditingProduct(null);
+    showToast('Produto salvo com sucesso!');
+  }, []);
 
   const handleAddCollection = (e: React.FormEvent) => {
     e.preventDefault();
@@ -645,26 +771,27 @@ export const AdminDashboard = () => {
     showToast('Coleção removida com sucesso!');
   };
 
-  const handleSaveOrder = (order: Order) => {
-    const newOrders = orders.map(o => o.id === order.id ? order : o);
-    setOrders(newOrders);
+  const handleSaveOrder = useCallback((order: Order) => {
+    setOrders(prev => prev.map(o => o.id === order.id ? order : o));
     // Auto-save handled by useEffect
-  };
+  }, []);
 
-  const handleSaveUser = (userToSave: User) => {
-    const exists = users.find(u => u.id === userToSave.id);
-    let newUsers;
-    if (exists) {
-      newUsers = users.map(u => u.id === userToSave.id ? userToSave : u);
-    } else {
-      newUsers = [...users, userToSave];
-    }
-    setUsers(newUsers);
-    saveUsers(newUsers);
+  const handleSaveUser = useCallback((userToSave: User) => {
+    setUsers(prev => {
+      const exists = prev.find(u => u.id === userToSave.id);
+      let newUsers;
+      if (exists) {
+        newUsers = prev.map(u => u.id === userToSave.id ? userToSave : u);
+      } else {
+        newUsers = [...prev, userToSave];
+      }
+      saveUsers(newUsers);
+      return newUsers;
+    });
     setIsUserModalOpen(false);
     setEditingUser(null);
     showToast('Cliente salvo com sucesso!');
-  };
+  }, []);
 
   const handleDeleteProduct = (id: string) => {
     setDeleteModal({ isOpen: true, type: 'product', id });
@@ -990,7 +1117,13 @@ export const AdminDashboard = () => {
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-bold text-gold">{formatPrice(order.total)}</p>
-                            <Badge variant={order.status === 'Entregue' ? 'success' : 'warning'}>{order.status || 'Pendente'}</Badge>
+                            <Badge variant={
+                              order.status === 'Entregue' ? 'success' : 
+                              order.status === 'Enviado' ? 'success' :
+                              order.status === 'Processado' ? 'blue' :
+                              order.status === 'Processando' ? 'warning' :
+                              order.status === 'Cancelado' ? 'error' : 'gray'
+                            }>{order.status || 'Pendente'}</Badge>
                           </div>
                         </div>
                       ))}
@@ -1208,7 +1341,12 @@ export const AdminDashboard = () => {
                       {orders.slice().reverse().map(order => (
                         <tr key={order.id} className="hover:bg-gray-50/50 transition-colors group">
                           <td className="px-10 py-6">
-                            <span className="font-mono text-xs font-bold text-gold">#{order.id.slice(0, 8)}</span>
+                            <button 
+                              onClick={() => setEditingOrder(order)}
+                              className="font-mono text-xs font-bold text-gold hover:underline"
+                            >
+                              #{order.id.slice(0, 8)}
+                            </button>
                           </td>
                           <td className="px-10 py-6">
                             <div>
@@ -1225,7 +1363,10 @@ export const AdminDashboard = () => {
                           <td className="px-10 py-6">
                             <Badge variant={
                               order.status === 'Entregue' ? 'success' : 
-                              order.status === 'Cancelado' ? 'error' : 'warning'
+                              order.status === 'Enviado' ? 'success' :
+                              order.status === 'Processado' ? 'blue' :
+                              order.status === 'Processando' ? 'warning' :
+                              order.status === 'Cancelado' ? 'error' : 'gray'
                             }>
                               {order.status || 'Pendente'}
                             </Badge>
@@ -1695,6 +1836,7 @@ export const AdminDashboard = () => {
           order={editingOrder} 
           onClose={() => setEditingOrder(null)} 
           onSave={handleSaveOrder} 
+          storeConfig={storeConfig}
         />
       )}
     </div>

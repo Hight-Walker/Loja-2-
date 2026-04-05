@@ -22,10 +22,10 @@ export interface User {
   phone?: string;
   cpf?: string;
   birthDate?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'dev';
 }
 
-export type OrderStatus = 'Pendente' | 'Processando' | 'Enviado' | 'Entregue' | 'Cancelado';
+export type OrderStatus = 'Pendente' | 'Processando' | 'Processado' | 'Enviado' | 'Entregue' | 'Cancelado';
 export type PaymentMethod = 'Cartão de Crédito' | 'Boleto' | 'Pix';
 
 export interface Order {
@@ -37,10 +37,13 @@ export interface Order {
     name: string;
     email: string;
     address: string;
+    cpf?: string;
+    phone?: string;
   };
   date: string;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
+  trackingNumber?: string;
 }
 
 export interface StoreConfig {
@@ -55,6 +58,22 @@ export interface StoreConfig {
   freeShippingEnabled?: boolean;
   freeShippingMinAmount?: number;
   collections?: string[];
+}
+
+export interface DeveloperConfig {
+  geminiApiKey: string;
+  unsplashApiUrl: string;
+  googleFontsUrl: string;
+  analyticsId: string;
+  mockExternalApi: string;
+  viacepApiUrl: string;
+  devName: string;
+  devRole: string;
+  devLink: string;
+  companyName: string;
+  companyLink: string;
+  appVersion: string;
+  systemStatus: 'stable' | 'beta' | 'maintenance';
 }
 
 export interface AnalyticsData {

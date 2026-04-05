@@ -73,7 +73,9 @@ export const CheckoutPage = () => {
       customer: {
         name: user.name,
         email: user.email,
-        address: orderAddress || user.address || 'Endereço não informado'
+        address: orderAddress || user.address || 'Endereço não informado',
+        cpf: user.cpf,
+        phone: user.phone
       }, 
       date: new Date().toISOString(),
       status: 'Processando',

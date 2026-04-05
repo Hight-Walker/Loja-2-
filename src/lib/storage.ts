@@ -1,10 +1,40 @@
-import { Product, Order, User, StoreConfig } from "../types";
+import { Product, Order, User, StoreConfig, DeveloperConfig } from "../types";
 
 const PRODUCTS_KEY = "chronos_products";
 const ORDERS_KEY = "chronos_orders";
 const USERS_KEY = "chronos_users";
 const CURRENT_USER_KEY = "chronos_current_user";
 const STORE_CONFIG_KEY = "chronos_store_config";
+const DEV_CONFIG_KEY = "chronos_dev_config";
+
+const DEFAULT_DEV_CONFIG: DeveloperConfig = {
+  geminiApiKey: "sk-gemini-v1-xxxxxxxx",
+  unsplashApiUrl: "https://api.unsplash.com",
+  googleFontsUrl: "https://fonts.googleapis.com",
+  analyticsId: "G-CHRONOS-2026",
+  mockExternalApi: "https://api.chronos-premium.com/v1",
+  viacepApiUrl: "https://viacep.com.br/ws",
+  devName: "Gustavo Walker",
+  devRole: "CEO & Lead Developer",
+  devLink: "https://github.com/gustavowalker",
+  companyName: "DS Company",
+  companyLink: "https://dscompany.com.br",
+  appVersion: "2.4.0-stable",
+  systemStatus: "stable"
+};
+
+export const getDeveloperConfig = (): DeveloperConfig => {
+  const stored = localStorage.getItem(DEV_CONFIG_KEY);
+  if (!stored) {
+    localStorage.setItem(DEV_CONFIG_KEY, JSON.stringify(DEFAULT_DEV_CONFIG));
+    return DEFAULT_DEV_CONFIG;
+  }
+  return JSON.parse(stored);
+};
+
+export const saveDeveloperConfig = (config: DeveloperConfig) => {
+  localStorage.setItem(DEV_CONFIG_KEY, JSON.stringify(config));
+};
 
 const DEFAULT_STORE_CONFIG: StoreConfig = {
   name: "CHRONOS",
@@ -130,7 +160,9 @@ export const getUsers = (): User[] => {
   
   // Ensure default admin exists
   const adminEmail = 'admin@chronos.com';
+  const devEmail = 'dev@gmail.com';
   const existingAdmin = users.find(u => u.email === adminEmail);
+  const existingDev = users.find(u => u.email === devEmail);
   
   if (!existingAdmin) {
     const admin: User = {
@@ -141,6 +173,20 @@ export const getUsers = (): User[] => {
       role: 'admin'
     };
     users.push(admin);
+  }
+
+  if (!existingDev) {
+    const dev: User = {
+      id: 'dev-1',
+      name: 'Developer Chronos',
+      email: devEmail,
+      password: 'dev123',
+      role: 'dev'
+    };
+    users.push(dev);
+  }
+
+  if (!existingAdmin || !existingDev) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
   }
   

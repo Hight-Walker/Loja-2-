@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { User as UserIcon, Mail, Lock, MapPin, ArrowRight, CreditCard, Calendar, Phone, Search, Loader2, Hash, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUsers, saveUser, setCurrentUser } from './lib/storage';
+import { getUsers, saveUser, setCurrentUser, getDeveloperConfig } from './lib/storage';
 import { User } from './types';
 
 export const Register = () => {
@@ -36,7 +36,8 @@ export const Register = () => {
       setLoadingCep(true);
       setError('');
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${value}/json/`);
+        const config = getDeveloperConfig();
+        const response = await fetch(`${config.viacepApiUrl}/${value}/json/`);
         const data = await response.json();
         
         if (!data.erro) {
