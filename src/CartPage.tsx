@@ -267,7 +267,7 @@ export const CartPage = () => {
                           {/* Image Container */}
                           <div className="w-24 h-32 sm:w-40 md:w-48 sm:h-auto aspect-[4/5] bg-gray-50 rounded-2xl md:rounded-[2rem] overflow-hidden relative shadow-inner shrink-0">
                             <img 
-                              src={item.image} 
+                              src={item.images[0]} 
                               alt={item.name} 
                               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
                               referrerPolicy="no-referrer" 

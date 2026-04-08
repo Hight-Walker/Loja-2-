@@ -48,6 +48,7 @@ export interface Order {
 
 export interface StoreConfig {
   name: string;
+  heroTitle?: string;
   logo: string;
   homepageBackground?: string;
   description: string;
@@ -74,6 +75,7 @@ export interface DeveloperConfig {
   companyLink: string;
   appVersion: string;
   systemStatus: 'stable' | 'beta' | 'maintenance';
+  mercadopagoAccessToken?: string;
 }
 
 export interface AnalyticsData {

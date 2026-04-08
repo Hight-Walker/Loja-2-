@@ -119,7 +119,7 @@ const Hero = ({ storeConfig }: { storeConfig: StoreConfig }) => (
         transition={{ delay: 0.5, duration: 0.8 }} 
         className="text-5xl sm:text-7xl font-bold mb-6 tracking-tight"
       >
-        TIMELESS PRECISION
+        {storeConfig.heroTitle || "TIMELESS PRECISION"}
       </motion.h1>
 
       <motion.p 

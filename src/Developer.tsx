@@ -4,7 +4,7 @@ import {
   Terminal, Shield, Globe, Key, Settings, 
   Save, ArrowLeft, ExternalLink, Cpu, 
   Database, Activity, Lock, AlertTriangle, MapPin, 
-  List, Trash2, RefreshCw, Play, User as UserIcon, Building, Info
+  List, Trash2, RefreshCw, Play, User as UserIcon, Building, Info, CreditCard
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { DeveloperConfig, User } from './types';
@@ -303,6 +303,18 @@ export const Developer = () => {
                         type="text" 
                         value={config.viacepApiUrl} 
                         onChange={e => setConfig({...config, viacepApiUrl: e.target.value})}
+                        className="w-full bg-black border border-white/10 rounded-xl p-4 outline-none focus:border-gold transition-all text-white font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2">
+                        <CreditCard size={12} /> Mercado Pago Access Token
+                      </label>
+                      <input 
+                        type="password" 
+                        value={config.mercadopagoAccessToken || ''} 
+                        onChange={e => setConfig({...config, mercadopagoAccessToken: e.target.value})}
+                        placeholder="APP_USR-..."
                         className="w-full bg-black border border-white/10 rounded-xl p-4 outline-none focus:border-gold transition-all text-white font-mono text-xs"
                       />
                     </div>

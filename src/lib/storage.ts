@@ -20,7 +20,8 @@ const DEFAULT_DEV_CONFIG: DeveloperConfig = {
   companyName: "DS Company",
   companyLink: "https://dscompany.com.br",
   appVersion: "2.4.0-stable",
-  systemStatus: "stable"
+  systemStatus: "stable",
+  mercadopagoAccessToken: ""
 };
 
 export const getDeveloperConfig = (): DeveloperConfig => {
@@ -38,6 +39,7 @@ export const saveDeveloperConfig = (config: DeveloperConfig) => {
 
 const DEFAULT_STORE_CONFIG: StoreConfig = {
   name: "CHRONOS",
+  heroTitle: "TIMELESS PRECISION",
   logo: "", // Empty means use default text logo
   homepageBackground: "https://images.unsplash.com/photo-1508685096489-7aac29145fe0?auto=format&fit=crop&q=80&w=1920",
   description: "Excelência em cada segundo. Descubra nossa coleção exclusiva de relógios que transcendem o tempo.",

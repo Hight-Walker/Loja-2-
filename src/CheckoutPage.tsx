@@ -5,9 +5,9 @@ import {
   ShoppingBag, MapPin, Phone, Mail, User as UserIcon, Lock,
   ArrowRight, ChevronRight, Star, Wallet, Info
 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Product, CartItem, Order, User, StoreConfig } from './types';
-import { getProducts, saveOrder, getCurrentUser, getStoreConfig } from './lib/storage';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { Product, CartItem, Order, User, StoreConfig, DeveloperConfig } from './types';
+import { getProducts, saveOrder, getCurrentUser, getStoreConfig, getUsers, saveUsers, getDeveloperConfig } from './lib/storage';
 import { cn, formatPrice } from './lib/utils';
 import { Toast, ToastType, Button, Badge } from './components/UI';
 import { Footer } from './components/Footer';
@@ -24,6 +24,27 @@ export const CheckoutPage = () => {
   const [orderShipping, setOrderShipping] = useState(0);
   
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const status = query.get('status');
+    
+    if (status === 'success') {
+      const savedOrder = sessionStorage.getItem('chronos_pending_order');
+      if (savedOrder) {
+        const orderData = JSON.parse(savedOrder);
+        saveOrder(orderData);
+        setOrderId(orderData.id);
+        setIsCompleted(true);
+        localStorage.removeItem('chronos_cart');
+        sessionStorage.removeItem('chronos_pending_order');
+        window.dispatchEvent(new Event('cartUpdated'));
+      }
+    } else if (status === 'failure') {
+      setToast({ message: 'O pagamento não foi concluído. Tente novamente.', type: 'error', isVisible: true });
+    }
+  }, [location]);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -61,34 +82,54 @@ export const CheckoutPage = () => {
 
     setIsProcessing(true);
 
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    try {
+      const newOrderId = Math.random().toString(36).substr(2, 9).toUpperCase();
+      const orderData: Order = { 
+        id: newOrderId, 
+        userId: user.id,
+        items: cart, 
+        total: total, 
+        customer: {
+          name: user.name,
+          email: user.email,
+          address: orderAddress || user.address || 'Endereço não informado',
+          cpf: user.cpf,
+          phone: user.phone
+        }, 
+        date: new Date().toISOString(),
+        status: 'Pendente',
+        paymentMethod: 'Pix' // Defaulting to Pix for MP integration display
+      };
 
-    const newOrderId = Math.random().toString(36).substr(2, 9).toUpperCase();
-    const newOrder: Order = { 
-      id: newOrderId, 
-      userId: user.id,
-      items: cart, 
-      total: total, 
-      customer: {
-        name: user.name,
-        email: user.email,
-        address: orderAddress || user.address || 'Endereço não informado',
-        cpf: user.cpf,
-        phone: user.phone
-      }, 
-      date: new Date().toISOString(),
-      status: 'Processando',
-      paymentMethod: 'Cartão de Crédito'
-    };
+      // Save order temporarily to recover after redirect
+      sessionStorage.setItem('chronos_pending_order', JSON.stringify(orderData));
 
-    saveOrder(newOrder);
-    localStorage.removeItem('chronos_cart');
-    setOrderId(newOrderId);
-    setIsProcessing(false);
-    setIsCompleted(true);
-    
-    window.dispatchEvent(new Event('cartUpdated'));
+      const response = await fetch('/api/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cart,
+          customer: orderData.customer,
+          accessToken: getDeveloperConfig().mercadopagoAccessToken
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        throw new Error(data.error || 'Falha ao iniciar checkout');
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      setToast({ 
+        message: error instanceof Error ? error.message : 'Erro ao processar pagamento. Verifique as configurações de Dev.', 
+        type: 'error', 
+        isVisible: true 
+      });
+      setIsProcessing(false);
+    }
   };
 
   if (isCompleted) {
@@ -256,7 +297,7 @@ export const CheckoutPage = () => {
                     {cart.map(item => (
                       <div key={item.id} className="flex gap-4 group">
                         <div className="w-20 h-20 bg-white rounded-[2rem] overflow-hidden flex-shrink-0 shadow-sm group-hover:shadow-lg transition-all duration-300">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                          <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
                         </div>
                         <div className="flex-1 flex flex-col justify-center">
                           <h4 className="text-base font-bold line-clamp-1 group-hover:text-gold transition-colors">{item.name}</h4>

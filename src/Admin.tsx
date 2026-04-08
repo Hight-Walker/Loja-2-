@@ -1561,6 +1561,16 @@ export const AdminDashboard = () => {
                         />
                       </div>
                       <div className="space-y-4">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Título de Impacto (Hero)</label>
+                        <input 
+                          type="text" 
+                          value={storeConfig.heroTitle || ''}
+                          onChange={e => setStoreConfig({...storeConfig, heroTitle: e.target.value})}
+                          placeholder="Ex: TIMELESS PRECISION"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-[2rem] px-6 py-4 text-sm outline-none focus:ring-2 focus:ring-gold transition-all"
+                        />
+                      </div>
+                      <div className="space-y-4">
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email de Contato</label>
                         <input 
                           type="email" 

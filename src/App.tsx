@@ -10,6 +10,7 @@ import { CheckoutPage } from './CheckoutPage';
 import { CartPage } from './CartPage';
 import { Developer } from './Developer';
 import { Maintenance } from './Maintenance';
+import { ScrollToTop } from './components/ScrollToTop';
 import { getCurrentUser, getDeveloperConfig } from './lib/storage';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -64,6 +65,7 @@ export default function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<PublicRoute><Storefront /></PublicRoute>} />
         <Route path="/product/:id" element={<PublicRoute><ProductPage /></PublicRoute>} />
